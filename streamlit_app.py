@@ -1,33 +1,26 @@
 import streamlit as st
-import requests, json, os
+import requests, json
 
-# Load API key
-OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY")
-if not OPENROUTER_API_KEY and os.path.exists("key.dev"):
-    with open("key.dev", "r") as f:
-        OPENROUTER_API_KEY = f.read().strip()
-
-if not OPENROUTER_API_KEY:
-    st.error("❌ OPENROUTER_API_KEY not found. Set it in env or create key.dev file.")
-    st.stop()
+# ✅ Load API key directly from Streamlit secrets
+OPENROUTER_API_KEY = st.secrets["OPENROUTER_API_KEY"]
 
 MODEL = "deepseek/deepseek-r1-0528:free"
 
-st.set_page_config(page_title="AnnaData_draft 1", page_icon="🌱")
-st.title("🧑‍🌾 AnnaData- किसानों की सेवा में ")
+st.set_page_config(page_title="AnnaData Draft 1", page_icon="🌱")
+st.title("🧑‍🌾 AnnaData - किसानों की सेवा में")
 
-# Chat history
+# Initialize chat history
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
-# Display chat history
+# Display past messages
 for msg in st.session_state.messages:
     with st.chat_message(msg["role"]):
         st.markdown(msg["content"])
 
-# Input box
-if prompt := st.chat_input("Type your question..."):
-    # Add user message
+# Chat input
+if prompt := st.chat_input("अपना सवाल लिखें..."):
+    # Save user message
     st.session_state.messages.append({"role": "user", "content": prompt})
     with st.chat_message("user"):
         st.markdown(prompt)
@@ -55,10 +48,13 @@ if prompt := st.chat_input("Type your question..."):
                     data_str = line[len(b"data: "):].decode("utf-8")
                     if data_str.strip() == "[DONE]":
                         break
-                    data_json = json.loads(data_str)
-                    delta = data_json["choices"][0]["delta"].get("content", "")
-                    full_response += delta
-                    placeholder.markdown(full_response)
+                    try:
+                        data_json = json.loads(data_str)
+                        delta = data_json["choices"][0]["delta"].get("content", "")
+                        full_response += delta
+                        placeholder.markdown(full_response)
+                    except Exception as e:
+                        placeholder.markdown(f"⚠️ Error parsing: {e}")
 
-        # Save assistant response
+        # Save assistant message
         st.session_state.messages.append({"role": "assistant", "content": full_response})
